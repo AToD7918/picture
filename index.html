@@ -241,8 +241,8 @@
         // 원래 크기로 복귀
         resetZoom();
       }
-      lastTap = 0;
-      justPinched = false; // 더블탭 후 핀치 플래그 초기화
+      lastTap = 0; // 더블탭 완료 후 카운터 리셋
+      justPinched = false;
       if (justPinchTimer) { clearTimeout(justPinchTimer); justPinchTimer = null; }
       return;
     }
@@ -253,14 +253,14 @@
       justPinched = true;
       if (justPinchTimer) clearTimeout(justPinchTimer);
       justPinchTimer = setTimeout(()=>{ justPinched = false; justPinchTimer = null; }, 400);
-      lastTap = 0;
+      lastTap = 0; // 핀치 후에는 더블탭 카운터 리셋
       return;
     }
 
     // 팬 종료
     if (isPanning && e.touches.length === 0) {
       isPanning = false;
-      lastTap = now;
+      lastTap = now; // 팬 후에는 시간 기록 (더블탭 가능)
       return;
     }
 
@@ -277,12 +277,13 @@
             idx = (idx - 1 + images.length) % images.length;
           }
           render(idx);
-          lastTap = 0;
+          lastTap = 0; // 스와이프 후 더블탭 카운터 리셋
           return;
         }
       }
     }
 
+    // 일반 탭 (더블탭 대기 중)
     lastTap = now;
   }, {passive: false});
 
