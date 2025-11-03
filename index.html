@@ -138,7 +138,7 @@
       const distance = getDistance(e.touches);
       const newScale = Math.max(1, Math.min(5, initialScale * (distance / initialDistance)));
       
-      // 핀치 중심점을 기준으로 줌
+      // 핀치 시작 시의 중심점을 기준으로 줌 (고정된 중심점 사용)
       const rect = container.getBoundingClientRect();
       const offsetX = pinchCenterX - rect.left - rect.width / 2;
       const offsetY = pinchCenterY - rect.top - rect.height / 2;
@@ -160,16 +160,20 @@
   }, {passive: false});
 
   container.addEventListener('touchend', (e) => {
-    if (e.touches.length === 0) {
+    if (isPinching && e.touches.length < 2) {
+      // 핀치 종료 - 줌 상태 유지
+      isPinching = false;
+      // scale이 1에 매우 가까우면 리셋
+      if (scale < 1.05) {
+        resetZoom();
+      }
+    } else if (isPanning && e.touches.length === 0) {
+      // 팬 종료
+      isPanning = false;
+    } else if (!isPinching && !isPanning && e.touches.length === 0 && scale === 1) {
+      // 스와이프 처리 (줌/팬 상태가 아니고 scale이 1일 때만)
       const touchDuration = Date.now() - lastTouchTime;
-      
-      if (isPinching) {
-        isPinching = false;
-        if (scale <= 1.1) resetZoom();
-      } else if (isPanning) {
-        isPanning = false;
-      } else if (scale === 1 && touchDuration < 300) {
-        // 스와이프 (줌 상태가 아닐 때만)
+      if (touchDuration < 300) {
         touchEndX = e.changedTouches[0].clientX;
         const diff = touchStartX - touchEndX;
         
