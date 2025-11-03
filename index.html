@@ -78,7 +78,6 @@
     big.src = images[i].src + '?_=' + ts;
     big.alt = images[i].alt || '';
     history.replaceState(null,'', images[i].id ? `?id=${encodeURIComponent(images[i].id)}` : location.pathname);
-    resetZoom();
   }
 
   // 두 터치 포인트 사이의 거리 계산
