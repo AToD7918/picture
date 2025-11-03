@@ -1,119 +1,69 @@
 <!doctype html>
+<html lang="ko">
+<head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Photos</title>
 <style>
-  body{margin:0;background:#000;color:#fff;font:16px/1.4 system-ui,Segoe UI,Arial}
-  header{padding:12px 16px;border-bottom:1px solid #222}
-  main{display:grid;place-items:center;min-height:calc(100vh - 56px);padding:8px}
-  .wrap{width:100%;max-width:900px}
-  .viewer{display:grid;place-items:center;height:calc(100vh - 140px)}
-  img{max-width:100%;max-height:100%;object-fit:contain}
-  .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;padding:8px 0}
-  .thumbs img{width:100%;height:72px;object-fit:cover;cursor:pointer;border:2px solid #333}
-  .thumbs img.active{border-color:#0af}
-  .bar{display:flex;gap:8px;align-items:center;justify-content:space-between}
-  button{background:#111;border:1px solid #333;color:#fff;padding:6px 10px;cursor:pointer}
-  a{color:#8cf;text-decoration:none}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#000;overflow:hidden;touch-action:pan-y}
+  .viewer{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
+  img{max-width:100%;max-height:100%;object-fit:contain;user-select:none}
 </style>
+</head>
+<body>
 
-<header><div class="bar">
-  <div id="title">Photos</div>
-  <div><a href="./" id="permalink">현재 사진 링크</a></div>
-</div></header>
-
-<main><div class="wrap">
-  <div class="viewer"><img id="big" alt=""></div>
-  <div class="bar">
-    <div>
-      <button id="prev">이전</button>
-      <button id="next">다음</button>
-    </div>
-    <div id="count"></div>
-  </div>
-  <div class="thumbs" id="thumbs"></div>
-</div></main>
+<div class="viewer">
+  <img id="big" alt="">
+</div>
 
 <script>
 (async () => {
-  // 항상 최신을 받기 위해 version.txt를 먼저 읽음
-  const ver = await fetch('version.txt?ts=' + Date.now(), {cache:'no-store'})
-                  .then(r=>r.text()).then(t=>t.trim()).catch(()=>Date.now());
+  // 강제 새로고침: 페이지 로드 시 항상 캐시 무시
+  if (performance.navigation.type !== 1) {
+    location.reload(true);
+    return;
+  }
 
-  const manifest = await fetch('manifest.json?v='+encodeURIComponent(ver), {cache:'no-store'}).then(r=>r.json());
+  const ts = Date.now();
+  const manifest = await fetch('manifest.json?_=' + ts).then(r=>r.json());
   const images = manifest.images || [];
   const params = new URLSearchParams(location.search);
   let idx = Math.max(0, images.findIndex(x => x.id === params.get('id')));
   if (idx === -1) idx = 0;
 
   const big = document.getElementById('big');
-  const thumbs = document.getElementById('thumbs');
-  const count = document.getElementById('count');
-  const permalink = document.getElementById('permalink');
-  document.getElementById('title').textContent = manifest.title || 'Photos';
 
-  function urlWithV(src){ return src + '?v=' + encodeURIComponent(ver); }
-  function setPermalink(i){
-    const id = images[i]?.id;
-    const base = location.origin + location.pathname.replace(/index\.html$/,'');
-    const link = id ? `${base}?id=${encodeURIComponent(id)}` : base;
-    permalink.href = link;
-  }
   function render(i){
     if (!images[i]) return;
-    big.src = urlWithV(images[i].src);
+    big.src = images[i].src + '?_=' + ts;
     big.alt = images[i].alt || '';
-    count.textContent = `${i+1} / ${images.length}`;
-    document.querySelectorAll('.thumbs img').forEach((el,j)=>el.classList.toggle('active', j===i));
     history.replaceState(null,'', images[i].id ? `?id=${encodeURIComponent(images[i].id)}` : location.pathname);
-    setPermalink(i);
   }
 
-  // 썸네일 생성
-  images.forEach((img, i) => {
-    const t = document.createElement('img');
-    t.loading = 'lazy';
-    t.src = urlWithV(img.src);
-    t.alt = img.alt || '';
-    t.addEventListener('click', () => { idx = i; render(idx); });
-    thumbs.appendChild(t);
-  });
-
-  document.getElementById('prev').onclick = () => { idx = (idx - 1 + images.length) % images.length; render(idx); };
-  document.getElementById('next').onclick = () => { idx = (idx + 1) % images.length; render(idx); };
-
-  // 터치 스와이프 기능
-  const viewer = document.querySelector('.viewer');
+  // 터치 스와이프
   let touchStartX = 0;
   let touchEndX = 0;
   
-  viewer.addEventListener('touchstart', (e) => {
+  document.addEventListener('touchstart', (e) => {
     touchStartX = e.changedTouches[0].screenX;
   }, {passive: true});
   
-  viewer.addEventListener('touchend', (e) => {
+  document.addEventListener('touchend', (e) => {
     touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-  }, {passive: true});
-  
-  function handleSwipe() {
-    const swipeThreshold = 50; // 최소 스와이프 거리
     const diff = touchStartX - touchEndX;
     
-    if (Math.abs(diff) > swipeThreshold) {
+    if (Math.abs(diff) > 50) {
       if (diff > 0) {
-        // 왼쪽으로 스와이프 → 다음 이미지
         idx = (idx + 1) % images.length;
-        render(idx);
       } else {
-        // 오른쪽으로 스와이프 → 이전 이미지
         idx = (idx - 1 + images.length) % images.length;
-        render(idx);
       }
+      render(idx);
     }
-  }
+  }, {passive: true});
 
-  // 키보드 화살표 지원
+  // 키보드 화살표
   document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') {
       idx = (idx - 1 + images.length) % images.length;
@@ -127,3 +77,5 @@
   render(idx);
 })();
 </script>
+</body>
+</html>

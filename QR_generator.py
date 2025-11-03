@@ -1,7 +1,6 @@
 import qrcode
 import os
 import json
-import time
 from pathlib import Path
 
 # 현재 스크립트의 디렉토리를 기준으로 경로 설정
@@ -9,7 +8,6 @@ SCRIPT_DIR = Path(__file__).parent
 PHOTOS_DIR = SCRIPT_DIR / "photos"
 QR_DIR = SCRIPT_DIR / "QR"
 MANIFEST_FILE = SCRIPT_DIR / "manifest.json"
-VERSION_FILE = SCRIPT_DIR / "version.txt"
 
 def get_image_files(directory):
     """photos 디렉토리에서 이미지 파일 목록을 가져옴"""
@@ -44,22 +42,12 @@ def update_manifest():
             "alt": img_id.upper()
         })
     
-    # manifest.json 저장
+    # manifest.json 저장 (UTF-8 인코딩)
     with open(MANIFEST_FILE, 'w', encoding='utf-8') as f:
         json.dump(manifest_data, f, indent=2, ensure_ascii=False)
     
     print(f"✓ manifest.json 업데이트 완료 ({len(images)}개 이미지)")
     return len(images)
-
-def update_version():
-    """version.txt 파일을 현재 타임스탬프로 업데이트"""
-    timestamp = str(int(time.time() * 1000))  # 밀리초 단위 타임스탬프
-    
-    with open(VERSION_FILE, 'w', encoding='utf-8') as f:
-        f.write(timestamp)
-    
-    print(f"✓ version.txt 업데이트 완료 (v{timestamp})")
-    return timestamp
 
 def generate_qr():
     """QR 코드 생성 (이미 존재하면 건너뜀)"""
@@ -87,25 +75,19 @@ def main():
     print("=" * 50)
     
     # 1. manifest.json 업데이트
-    print("\n[1/3] manifest.json 업데이트 중...")
+    print("\n[1/2] manifest.json 업데이트 중...")
     img_count = update_manifest()
     
-    # 2. version.txt 업데이트
-    print("\n[2/3] version.txt 업데이트 중...")
-    version = update_version()
-    
-    # 3. QR 코드 생성 (이미 있으면 건너뜀)
-    print("\n[3/3] QR 코드 확인 중...")
+    # 2. QR 코드 생성 (이미 있으면 건너뜀)
+    print("\n[2/2] QR 코드 확인 중...")
     qr_created = generate_qr()
     
     print("\n" + "=" * 50)
     print("✓ 모든 작업 완료!")
     print(f"  - 이미지 수: {img_count}개")
-    print(f"  - 버전: {version}")
     print(f"  - QR 코드: {'새로 생성됨' if qr_created else '기존 사용'}")
     print("  - URL: https://AToD7918.github.io/picture/")
-    print("\n💡 QR 코드는 한번 생성되면 변경되지 않습니다.")
-    print("   웹페이지는 버전 관리로 항상 최신 내용을 보여줍니다.")
+    print("\n💡 페이지는 항상 강제 새로고침으로 최신 이미지를 표시합니다.")
     print("=" * 50)
 
 if __name__ == "__main__":
