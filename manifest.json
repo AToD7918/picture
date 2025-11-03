@@ -10,6 +10,11 @@
       "id": "2",
       "src": "photos/2.jpg",
       "alt": "Photo 2"
+    },
+    {
+      "id": "3",
+      "src": "photos/3.png",
+      "alt": "Photo 3"
     }
   ]
 }

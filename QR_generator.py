@@ -1,6 +1,7 @@
 import qrcode
 import os
 import json
+import re
 from pathlib import Path
 
 # 현재 스크립트의 디렉토리를 기준으로 경로 설정
@@ -8,6 +9,46 @@ SCRIPT_DIR = Path(__file__).parent
 PHOTOS_DIR = SCRIPT_DIR / "photos"
 QR_DIR = SCRIPT_DIR / "QR"
 MANIFEST_FILE = SCRIPT_DIR / "manifest.json"
+
+def rename_photos_to_numbers():
+    """photos 폴더의 모든 이미지 파일을 1, 2, 3... 순서로 이름 변경"""
+    supported_formats = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
+    
+    if not PHOTOS_DIR.exists():
+        print(f"경고: {PHOTOS_DIR} 디렉토리가 존재하지 않습니다.")
+        return 0
+    
+    # 모든 이미지 파일 수집
+    image_files = []
+    for file in PHOTOS_DIR.iterdir():
+        if file.is_file() and file.suffix.lower() in supported_formats:
+            image_files.append(file)
+    
+    if not image_files:
+        print("경고: photos 폴더에 이미지 파일이 없습니다.")
+        return 0
+    
+    # 파일 이름으로 정렬 (기존 순서 유지)
+    image_files.sort(key=lambda f: f.name.lower())
+    
+    # 임시 이름으로 먼저 변경 (충돌 방지)
+    temp_files = []
+    for i, old_file in enumerate(image_files, 1):
+        temp_name = f"temp_{i}{old_file.suffix}"
+        temp_path = PHOTOS_DIR / temp_name
+        old_file.rename(temp_path)
+        temp_files.append((temp_path, i, old_file.suffix))
+    
+    # 최종 이름으로 변경
+    renamed_count = 0
+    for temp_path, num, ext in temp_files:
+        new_name = f"{num}{ext}"
+        new_path = PHOTOS_DIR / new_name
+        temp_path.rename(new_path)
+        renamed_count += 1
+    
+    print(f"✓ 파일 이름 변경 완료 ({renamed_count}개 파일 → 1, 2, 3...)")
+    return renamed_count
 
 def get_image_files(directory):
     """photos 디렉토리에서 이미지 파일 목록을 가져옴"""
@@ -24,7 +65,6 @@ def get_image_files(directory):
     
     # 숫자 파일명 자연스럽게 정렬 (1.jpg, 2.jpg, 10.jpg 순서로)
     def natural_sort_key(filename):
-        import re
         # 파일명에서 숫자 부분 추출하여 정수로 변환
         stem = Path(filename).stem
         numbers = re.findall(r'\d+', stem)
@@ -85,12 +125,16 @@ def main():
     print("Photo Gallery 배포 준비")
     print("=" * 50)
     
+    # 0. 파일 이름을 1, 2, 3... 으로 변경
+    print("\n[1/3] 파일 이름 정리 중...")
+    rename_photos_to_numbers()
+    
     # 1. manifest.json 업데이트
-    print("\n[1/2] manifest.json 업데이트 중...")
+    print("\n[2/3] manifest.json 업데이트 중...")
     img_count = update_manifest()
     
     # 2. QR 코드 생성 (이미 있으면 건너뜀)
-    print("\n[2/2] QR 코드 확인 중...")
+    print("\n[3/3] QR 코드 확인 중...")
     qr_created = generate_qr()
     
     print("\n" + "=" * 50)
