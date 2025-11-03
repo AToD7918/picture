@@ -45,6 +45,10 @@
   let translateY = 0;
   let initialDistance = 0;
   let initialScale = 1;
+  let initialTranslateX = 0;
+  let initialTranslateY = 0;
+  let pinchCenterX = 0;
+  let pinchCenterY = 0;
   let initialX = 0;
   let initialY = 0;
 
@@ -57,6 +61,22 @@
     translateX = 0;
     translateY = 0;
     updateTransform();
+  }
+
+  // 특정 점을 중심으로 줌
+  function zoomToPoint(clientX, clientY, newScale) {
+    const rect = container.getBoundingClientRect();
+    const offsetX = clientX - rect.left - rect.width / 2;
+    const offsetY = clientY - rect.top - rect.height / 2;
+    
+    // 현재 scale에서의 offset을 계산
+    const oldOffsetX = (offsetX - translateX) / scale;
+    const oldOffsetY = (offsetY - translateY) / scale;
+    
+    // 새로운 scale로 변환
+    translateX = offsetX - oldOffsetX * newScale;
+    translateY = offsetY - oldOffsetY * newScale;
+    scale = newScale;
   }
 
   function render(i){
@@ -94,9 +114,11 @@
       isPinching = true;
       initialDistance = getDistance(e.touches);
       initialScale = scale;
+      initialTranslateX = translateX;
+      initialTranslateY = translateY;
       const center = getCenter(e.touches);
-      initialX = center.x;
-      initialY = center.y;
+      pinchCenterX = center.x;
+      pinchCenterY = center.y;
     } else if (e.touches.length === 1 && scale > 1) {
       // 줌 상태에서 팬 시작
       e.preventDefault();
@@ -115,7 +137,19 @@
       e.preventDefault();
       const distance = getDistance(e.touches);
       const newScale = Math.max(1, Math.min(5, initialScale * (distance / initialDistance)));
+      
+      // 핀치 중심점을 기준으로 줌
+      const rect = container.getBoundingClientRect();
+      const offsetX = pinchCenterX - rect.left - rect.width / 2;
+      const offsetY = pinchCenterY - rect.top - rect.height / 2;
+      
+      const oldOffsetX = (offsetX - initialTranslateX) / initialScale;
+      const oldOffsetY = (offsetY - initialTranslateY) / initialScale;
+      
+      translateX = offsetX - oldOffsetX * newScale;
+      translateY = offsetY - oldOffsetY * newScale;
       scale = newScale;
+      
       updateTransform();
     } else if (isPanning && e.touches.length === 1 && scale > 1) {
       e.preventDefault();
@@ -153,22 +187,27 @@
 
   // 더블탭으로 줌 토글
   let lastTap = 0;
+  let lastTapX = 0;
+  let lastTapY = 0;
+  
   container.addEventListener('touchend', (e) => {
     const now = Date.now();
     if (now - lastTap < 300 && e.touches.length === 0) {
       e.preventDefault();
       if (scale === 1) {
-        scale = 2.5;
+        // 더블탭 위치를 중심으로 줌인
         const touch = e.changedTouches[0];
-        const rect = container.getBoundingClientRect();
-        translateX = (rect.width / 2 - touch.clientX) * 0.5;
-        translateY = (rect.height / 2 - touch.clientY) * 0.5;
+        zoomToPoint(touch.clientX, touch.clientY, 2.5);
+        updateTransform();
       } else {
         resetZoom();
       }
-      updateTransform();
     }
     lastTap = now;
+    if (e.changedTouches.length > 0) {
+      lastTapX = e.changedTouches[0].clientX;
+      lastTapY = e.changedTouches[0].clientY;
+    }
   });
 
   // 스와이프 (기존 코드 제거됨 - 위의 touchend에 통합)
