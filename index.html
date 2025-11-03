@@ -58,6 +58,46 @@
     container.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
   }
 
+  // 이미지 경계 제한
+  function constrainTranslate() {
+    if (scale <= 1) {
+      translateX = 0;
+      translateY = 0;
+      return;
+    }
+
+    const imgRect = big.getBoundingClientRect();
+    const viewerRect = container.parentElement.getBoundingClientRect();
+
+    // 이미지의 실제 크기 (확대된 상태)
+    const imgWidth = imgRect.width;
+    const imgHeight = imgRect.height;
+
+    // 뷰포트 크기
+    const viewWidth = viewerRect.width;
+    const viewHeight = viewerRect.height;
+
+    // 이미지가 뷰포트보다 클 때만 제한
+    if (imgWidth > viewWidth) {
+      const maxX = (imgWidth - viewWidth) / 2;
+      translateX = Math.max(-maxX, Math.min(maxX, translateX));
+    } else {
+      translateX = 0;
+    }
+
+    if (imgHeight > viewHeight) {
+      const maxY = (imgHeight - viewHeight) / 2;
+      translateY = Math.max(-maxY, Math.min(maxY, translateY));
+    } else {
+      translateY = 0;
+    }
+  }
+
+  function updateTransformConstrained() {
+    constrainTranslate();
+    updateTransform();
+  }
+
   function resetZoom() {
     scale = 1;
     translateX = 0;
@@ -147,12 +187,12 @@
       translateY = offsetY - oldOffsetY * newScale;
       scale = newScale;
 
-      updateTransform();
+      updateTransformConstrained();
     } else if (isPanning && e.touches.length === 1 && scale > 1) {
       e.preventDefault();
       translateX = e.touches[0].clientX - initialX;
       translateY = e.touches[0].clientY - initialY;
-      updateTransform();
+      updateTransformConstrained();
     }
   }, {passive: false});
 
@@ -170,7 +210,7 @@
       if (scale === 1) {
         const touch = e.changedTouches[0];
         zoomToPoint(touch.clientX, touch.clientY, 2.5);
-        updateTransform();
+        updateTransformConstrained();
       } else {
         resetZoom();
       }
