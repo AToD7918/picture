@@ -31,6 +31,15 @@
 
 <script>
 (async () => {
+  // 0.1초 후 강제 새로고침 (최초 로드 시에만)
+  if (!sessionStorage.getItem('reloaded')) {
+    sessionStorage.setItem('reloaded', 'true');
+    setTimeout(() => {
+      location.reload(true);
+    }, 100);
+    return;
+  }
+
   const ts = Date.now();
   const manifest = await fetch('manifest.json?_=' + ts).then(r=>r.json());
   const images = manifest.images || [];
@@ -204,17 +213,25 @@
     const now = Date.now();
     const timeSinceLastTap = now - lastTap;
 
-    // 더블탭 감지
-    if (!justPinched && timeSinceLastTap < 300 && timeSinceLastTap > 0 && e.touches.length === 0 && !isPinching && !isPanning) {
+  container.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTap;
+
+    // 더블탭 감지 (확대 상태에서도 작동)
+    if (timeSinceLastTap < 300 && timeSinceLastTap > 0 && e.touches.length === 0 && !isPinching && !isPanning) {
       e.preventDefault();
       if (scale === 1) {
+        // 확대
         const touch = e.changedTouches[0];
         zoomToPoint(touch.clientX, touch.clientY, 2.5);
         updateTransformConstrained();
       } else {
+        // 원래 크기로 복귀
         resetZoom();
       }
       lastTap = 0;
+      justPinched = false; // 더블탭 후 핀치 플래그 초기화
+      if (justPinchTimer) { clearTimeout(justPinchTimer); justPinchTimer = null; }
       return;
     }
 
