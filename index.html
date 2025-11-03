@@ -82,6 +82,48 @@
   document.getElementById('prev').onclick = () => { idx = (idx - 1 + images.length) % images.length; render(idx); };
   document.getElementById('next').onclick = () => { idx = (idx + 1) % images.length; render(idx); };
 
+  // 터치 스와이프 기능
+  const viewer = document.querySelector('.viewer');
+  let touchStartX = 0;
+  let touchEndX = 0;
+  
+  viewer.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+  }, {passive: true});
+  
+  viewer.addEventListener('touchend', (e) => {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+  }, {passive: true});
+  
+  function handleSwipe() {
+    const swipeThreshold = 50; // 최소 스와이프 거리
+    const diff = touchStartX - touchEndX;
+    
+    if (Math.abs(diff) > swipeThreshold) {
+      if (diff > 0) {
+        // 왼쪽으로 스와이프 → 다음 이미지
+        idx = (idx + 1) % images.length;
+        render(idx);
+      } else {
+        // 오른쪽으로 스와이프 → 이전 이미지
+        idx = (idx - 1 + images.length) % images.length;
+        render(idx);
+      }
+    }
+  }
+
+  // 키보드 화살표 지원
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') {
+      idx = (idx - 1 + images.length) % images.length;
+      render(idx);
+    } else if (e.key === 'ArrowRight') {
+      idx = (idx + 1) % images.length;
+      render(idx);
+    }
+  });
+
   render(idx);
 })();
 </script>
