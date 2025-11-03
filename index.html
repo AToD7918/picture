@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Photos</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
@@ -31,17 +34,26 @@
 
 <script>
 (async () => {
-  // 0.1초 후 강제 새로고침 (최초 로드 시에만)
-  if (!sessionStorage.getItem('reloaded')) {
-    sessionStorage.setItem('reloaded', 'true');
-    setTimeout(() => {
-      location.reload(true);
-    }, 100);
-    return;
+  // Service Worker 제거 (캐시 완전 차단)
+  if ('serviceWorker' in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    for (let registration of registrations) {
+      registration.unregister();
+    }
   }
 
+  // 캐시 완전 무효화
   const ts = Date.now();
-  const manifest = await fetch('manifest.json?_=' + ts).then(r=>r.json());
+  
+  const manifest = await fetch('manifest.json?_=' + ts, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  }).then(r=>r.json());
+  
   const images = manifest.images || [];
   const params = new URLSearchParams(location.search);
   let idx = Math.max(0, images.findIndex(x => x.id === params.get('id')));
