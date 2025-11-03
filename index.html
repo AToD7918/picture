@@ -153,19 +153,50 @@
     }
   }, {passive: false});
 
+  // 스와이프와 더블탭 변수
+  let touchStartX = 0;
+  let touchEndX = 0;
+  let lastTap = 0;
+
   container.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTap;
+    
+    // 더블탭 감지
+    if (timeSinceLastTap < 300 && timeSinceLastTap > 0 && e.touches.length === 0 && !isPinching && !isPanning) {
+      e.preventDefault();
+      if (scale === 1) {
+        // 더블탭 위치를 중심으로 줌인
+        const touch = e.changedTouches[0];
+        zoomToPoint(touch.clientX, touch.clientY, 2.5);
+        updateTransform();
+      } else {
+        resetZoom();
+      }
+      lastTap = 0; // 더블탭 처리 후 리셋
+      return;
+    }
+    
+    // 핀치 종료
     if (isPinching && e.touches.length < 2) {
-      // 핀치 종료 - 줌 상태 유지
       isPinching = false;
       // scale이 1에 매우 가까우면 리셋
       if (scale < 1.05) {
         resetZoom();
       }
-    } else if (isPanning && e.touches.length === 0) {
-      // 팬 종료
+      lastTap = now;
+      return;
+    }
+    
+    // 팬 종료
+    if (isPanning && e.touches.length === 0) {
       isPanning = false;
-    } else if (!isPinching && !isPanning && e.touches.length === 0 && scale === 1) {
-      // 스와이프 처리 (줌/팬 상태가 아니고 scale이 1일 때만)
+      lastTap = now;
+      return;
+    }
+    
+    // 스와이프 처리 (줌/팬 상태가 아니고 scale이 1일 때만)
+    if (!isPinching && !isPanning && e.touches.length === 0 && scale === 1) {
       const touchDuration = Date.now() - lastTouchTime;
       if (touchDuration < 300) {
         touchEndX = e.changedTouches[0].clientX;
@@ -178,42 +209,14 @@
             idx = (idx - 1 + images.length) % images.length;
           }
           render(idx);
+          lastTap = 0; // 스와이프 후 더블탭 카운터 리셋
+          return;
         }
       }
     }
-  }, {passive: false});
-
-  // 더블탭으로 줌 토글
-  let lastTap = 0;
-  let lastTapX = 0;
-  let lastTapY = 0;
-  
-  container.addEventListener('touchend', (e) => {
-    const now = Date.now();
-    if (now - lastTap < 300 && e.touches.length === 0) {
-      e.preventDefault();
-      if (scale === 1) {
-        // 더블탭 위치를 중심으로 줌인
-        const touch = e.changedTouches[0];
-        zoomToPoint(touch.clientX, touch.clientY, 2.5);
-        updateTransform();
-      } else {
-        resetZoom();
-      }
-    }
+    
     lastTap = now;
-    if (e.changedTouches.length > 0) {
-      lastTapX = e.changedTouches[0].clientX;
-      lastTapY = e.changedTouches[0].clientY;
-    }
-  });
-
-  // 스와이프 (기존 코드 제거됨 - 위의 touchend에 통합)
-  let touchStartX = 0;
-  let touchEndX = 0;
-  
-  // 제거: document.addEventListener('touchstart', ...)
-  // 제거: document.addEventListener('touchend', ...)
+  }, {passive: false});
 
   // 키보드 화살표
   document.addEventListener('keydown', (e) => {
