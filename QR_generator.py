@@ -18,10 +18,21 @@ def get_image_files(directory):
         print(f"경고: {directory} 디렉토리가 존재하지 않습니다.")
         return image_files
     
-    for file in sorted(directory.iterdir()):
+    for file in directory.iterdir():
         if file.is_file() and file.suffix.lower() in supported_formats:
             image_files.append(file.name)
     
+    # 숫자 파일명 자연스럽게 정렬 (1.jpg, 2.jpg, 10.jpg 순서로)
+    def natural_sort_key(filename):
+        import re
+        # 파일명에서 숫자 부분 추출하여 정수로 변환
+        stem = Path(filename).stem
+        numbers = re.findall(r'\d+', stem)
+        if numbers:
+            return int(numbers[0])
+        return float('inf')  # 숫자가 없으면 맨 뒤로
+    
+    image_files.sort(key=natural_sort_key)
     return image_files
 
 def update_manifest():
@@ -34,12 +45,12 @@ def update_manifest():
     }
     
     for img in images:
-        # 파일명에서 확장자를 제거하여 ID로 사용
+        # 파일명에서 확장자를 제거하여 ID로 사용 (숫자 그대로)
         img_id = Path(img).stem
         manifest_data["images"].append({
             "id": img_id,
             "src": f"photos/{img}",
-            "alt": img_id.upper()
+            "alt": f"Photo {img_id}"
         })
     
     # manifest.json 저장 (UTF-8 인코딩)

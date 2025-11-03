@@ -2,14 +2,14 @@
   "title": "My Photos",
   "images": [
     {
-      "id": "a",
-      "src": "photos/a.jpg",
-      "alt": "A"
+      "id": "1",
+      "src": "photos/1.jpg",
+      "alt": "Photo 1"
     },
     {
-      "id": "b",
-      "src": "photos/b.jpg",
-      "alt": "B"
+      "id": "2",
+      "src": "photos/2.jpg",
+      "alt": "Photo 2"
     }
   ]
 }
