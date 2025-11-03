@@ -22,9 +22,7 @@
 
 <script>
 (async () => {
-  sleep(100);
-  location.reload(true);
-  
+
   const ts = Date.now();
   const manifest = await fetch('manifest.json?_=' + ts).then(r=>r.json());
   const images = manifest.images || [];
