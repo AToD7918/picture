@@ -1,0 +1,15 @@
+{
+  "title": "My Photos",
+  "images": [
+    {
+      "id": "a",
+      "src": "photos/a.jpg",
+      "alt": "A"
+    },
+    {
+      "id": "b",
+      "src": "photos/b.jpg",
+      "alt": "B"
+    }
+  ]
+}
