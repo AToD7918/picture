@@ -36,9 +36,13 @@
 (async () => {
   // Service Worker 제거 (캐시 완전 차단)
   if ('serviceWorker' in navigator) {
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    for (let registration of registrations) {
-      registration.unregister();
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (let registration of registrations) {
+        await registration.unregister();
+      }
+    } catch (e) {
+      console.log('Service Worker cleanup skipped');
     }
   }
 
@@ -220,10 +224,6 @@
   let touchStartX = 0;
   let touchEndX = 0;
   let lastTap = 0;
-
-  container.addEventListener('touchend', (e) => {
-    const now = Date.now();
-    const timeSinceLastTap = now - lastTap;
 
   container.addEventListener('touchend', (e) => {
     const now = Date.now();
