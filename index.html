@@ -2,19 +2,22 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes">
 <title>Photos</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{background:#000;overflow:hidden;touch-action:pan-y}
-  .viewer{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center}
-  img{max-width:100%;max-height:100%;object-fit:contain;user-select:none}
+  body{background:#000;overflow:hidden}
+  .viewer{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+  .img-container{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;transform-origin:center center}
+  img{max-width:100%;max-height:100%;object-fit:contain;user-select:none;touch-action:none}
 </style>
 </head>
 <body>
 
 <div class="viewer">
-  <img id="big" alt="">
+  <div class="img-container" id="container">
+    <img id="big" alt="">
+  </div>
 </div>
 
 <script>
@@ -34,35 +37,146 @@
   if (idx === -1) idx = 0;
 
   const big = document.getElementById('big');
+  const container = document.getElementById('container');
+
+  // 줌/팬 상태
+  let scale = 1;
+  let translateX = 0;
+  let translateY = 0;
+  let initialDistance = 0;
+  let initialScale = 1;
+  let initialX = 0;
+  let initialY = 0;
+
+  function updateTransform() {
+    container.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+  }
+
+  function resetZoom() {
+    scale = 1;
+    translateX = 0;
+    translateY = 0;
+    updateTransform();
+  }
 
   function render(i){
     if (!images[i]) return;
     big.src = images[i].src + '?_=' + ts;
     big.alt = images[i].alt || '';
     history.replaceState(null,'', images[i].id ? `?id=${encodeURIComponent(images[i].id)}` : location.pathname);
+    resetZoom();
   }
 
-  // 터치 스와이프
+  // 두 터치 포인트 사이의 거리 계산
+  function getDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  // 두 터치 포인트의 중심점 계산
+  function getCenter(touches) {
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2
+    };
+  }
+
+  // 핀치 줌 & 팬
+  let isPinching = false;
+  let isPanning = false;
+  let lastTouchTime = 0;
+
+  container.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      // 핀치 줌 시작
+      e.preventDefault();
+      isPinching = true;
+      initialDistance = getDistance(e.touches);
+      initialScale = scale;
+      const center = getCenter(e.touches);
+      initialX = center.x;
+      initialY = center.y;
+    } else if (e.touches.length === 1 && scale > 1) {
+      // 줌 상태에서 팬 시작
+      e.preventDefault();
+      isPanning = true;
+      initialX = e.touches[0].clientX - translateX;
+      initialY = e.touches[0].clientY - translateY;
+    } else if (e.touches.length === 1) {
+      // 스와이프를 위한 시작점 저장
+      touchStartX = e.touches[0].clientX;
+      lastTouchTime = Date.now();
+    }
+  }, {passive: false});
+
+  container.addEventListener('touchmove', (e) => {
+    if (isPinching && e.touches.length === 2) {
+      e.preventDefault();
+      const distance = getDistance(e.touches);
+      const newScale = Math.max(1, Math.min(5, initialScale * (distance / initialDistance)));
+      scale = newScale;
+      updateTransform();
+    } else if (isPanning && e.touches.length === 1 && scale > 1) {
+      e.preventDefault();
+      translateX = e.touches[0].clientX - initialX;
+      translateY = e.touches[0].clientY - initialY;
+      updateTransform();
+    }
+  }, {passive: false});
+
+  container.addEventListener('touchend', (e) => {
+    if (e.touches.length === 0) {
+      const touchDuration = Date.now() - lastTouchTime;
+      
+      if (isPinching) {
+        isPinching = false;
+        if (scale <= 1.1) resetZoom();
+      } else if (isPanning) {
+        isPanning = false;
+      } else if (scale === 1 && touchDuration < 300) {
+        // 스와이프 (줌 상태가 아닐 때만)
+        touchEndX = e.changedTouches[0].clientX;
+        const diff = touchStartX - touchEndX;
+        
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) {
+            idx = (idx + 1) % images.length;
+          } else {
+            idx = (idx - 1 + images.length) % images.length;
+          }
+          render(idx);
+        }
+      }
+    }
+  }, {passive: false});
+
+  // 더블탭으로 줌 토글
+  let lastTap = 0;
+  container.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTap < 300 && e.touches.length === 0) {
+      e.preventDefault();
+      if (scale === 1) {
+        scale = 2.5;
+        const touch = e.changedTouches[0];
+        const rect = container.getBoundingClientRect();
+        translateX = (rect.width / 2 - touch.clientX) * 0.5;
+        translateY = (rect.height / 2 - touch.clientY) * 0.5;
+      } else {
+        resetZoom();
+      }
+      updateTransform();
+    }
+    lastTap = now;
+  });
+
+  // 스와이프 (기존 코드 제거됨 - 위의 touchend에 통합)
   let touchStartX = 0;
   let touchEndX = 0;
   
-  document.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-  }, {passive: true});
-  
-  document.addEventListener('touchend', (e) => {
-    touchEndX = e.changedTouches[0].screenX;
-    const diff = touchStartX - touchEndX;
-    
-    if (Math.abs(diff) > 50) {
-      if (diff > 0) {
-        idx = (idx + 1) % images.length;
-      } else {
-        idx = (idx - 1 + images.length) % images.length;
-      }
-      render(idx);
-    }
-  }, {passive: true});
+  // 제거: document.addEventListener('touchstart', ...)
+  // 제거: document.addEventListener('touchend', ...)
 
   // 키보드 화살표
   document.addEventListener('keydown', (e) => {
