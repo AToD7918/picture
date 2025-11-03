@@ -22,13 +22,9 @@
 
 <script>
 (async () => {
-  // 강제 새로고침: 페이지 로드 시 항상 캐시 무시
-  if (performance.navigation.type !== 1) {
-    sleep(100);
-    location.reload(true);
-    return;
-  }
-
+  sleep(100);
+  location.reload(true);
+  
   const ts = Date.now();
   const manifest = await fetch('manifest.json?_=' + ts).then(r=>r.json());
   const images = manifest.images || [];
