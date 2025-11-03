@@ -180,10 +180,7 @@
     // 핀치 종료
     if (isPinching && e.touches.length < 2) {
       isPinching = false;
-      // scale이 1에 매우 가까우면 리셋
-      if (scale < 1.05) {
-        resetZoom();
-      }
+      // 핀치 후 줌 상태 유지 (자동 리셋 제거)
       lastTap = now;
       return;
     }
