@@ -8,7 +8,16 @@
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:#000;overflow:hidden}
   .viewer{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
-  .img-container{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;transform-origin:center center}
+  .img-container{
+    width:100%;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    transform-origin:center center;
+    touch-action:none; /* 브라우저 제스처 차단 */
+  }
   img{max-width:100%;max-height:100%;object-fit:contain;user-select:none;touch-action:none}
 </style>
 </head>
@@ -22,7 +31,6 @@
 
 <script>
 (async () => {
-
   const ts = Date.now();
   const manifest = await fetch('manifest.json?_=' + ts).then(r=>r.json());
   const images = manifest.images || [];
@@ -62,12 +70,10 @@
     const rect = container.getBoundingClientRect();
     const offsetX = clientX - rect.left - rect.width / 2;
     const offsetY = clientY - rect.top - rect.height / 2;
-    
-    // 현재 scale에서의 offset을 계산
+
     const oldOffsetX = (offsetX - translateX) / scale;
     const oldOffsetY = (offsetY - translateY) / scale;
-    
-    // 새로운 scale로 변환
+
     translateX = offsetX - oldOffsetX * newScale;
     translateY = offsetY - oldOffsetY * newScale;
     scale = newScale;
@@ -78,16 +84,15 @@
     big.src = images[i].src + '?_=' + ts;
     big.alt = images[i].alt || '';
     history.replaceState(null,'', images[i].id ? `?id=${encodeURIComponent(images[i].id)}` : location.pathname);
+    resetZoom();
   }
 
-  // 두 터치 포인트 사이의 거리 계산
   function getDistance(touches) {
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  // 두 터치 포인트의 중심점 계산
   function getCenter(touches) {
     return {
       x: (touches[0].clientX + touches[1].clientX) / 2,
@@ -95,15 +100,17 @@
     };
   }
 
-  // 핀치 줌 & 팬
   let isPinching = false;
   let isPanning = false;
   let lastTouchTime = 0;
+  let justPinched = false;
+  let justPinchTimer = null;
 
   container.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
-      // 핀치 줌 시작
       e.preventDefault();
+      justPinched = false;
+      if (justPinchTimer) { clearTimeout(justPinchTimer); justPinchTimer = null; }
       isPinching = true;
       initialDistance = getDistance(e.touches);
       initialScale = scale;
@@ -113,13 +120,11 @@
       pinchCenterX = center.x;
       pinchCenterY = center.y;
     } else if (e.touches.length === 1 && scale > 1) {
-      // 줌 상태에서 팬 시작
       e.preventDefault();
       isPanning = true;
       initialX = e.touches[0].clientX - translateX;
       initialY = e.touches[0].clientY - translateY;
     } else if (e.touches.length === 1) {
-      // 스와이프를 위한 시작점 저장
       touchStartX = e.touches[0].clientX;
       lastTouchTime = Date.now();
     }
@@ -130,19 +135,18 @@
       e.preventDefault();
       const distance = getDistance(e.touches);
       const newScale = Math.max(1, Math.min(5, initialScale * (distance / initialDistance)));
-      
-      // 핀치 시작 시의 중심점을 기준으로 줌 (고정된 중심점 사용)
+
       const rect = container.getBoundingClientRect();
       const offsetX = pinchCenterX - rect.left - rect.width / 2;
       const offsetY = pinchCenterY - rect.top - rect.height / 2;
-      
+
       const oldOffsetX = (offsetX - initialTranslateX) / initialScale;
       const oldOffsetY = (offsetY - initialTranslateY) / initialScale;
-      
+
       translateX = offsetX - oldOffsetX * newScale;
       translateY = offsetY - oldOffsetY * newScale;
       scale = newScale;
-      
+
       updateTransform();
     } else if (isPanning && e.touches.length === 1 && scale > 1) {
       e.preventDefault();
@@ -152,7 +156,6 @@
     }
   }, {passive: false});
 
-  // 스와이프와 더블탭 변수
   let touchStartX = 0;
   let touchEndX = 0;
   let lastTap = 0;
@@ -160,44 +163,44 @@
   container.addEventListener('touchend', (e) => {
     const now = Date.now();
     const timeSinceLastTap = now - lastTap;
-    
+
     // 더블탭 감지
-    if (timeSinceLastTap < 300 && timeSinceLastTap > 0 && e.touches.length === 0 && !isPinching && !isPanning) {
+    if (!justPinched && timeSinceLastTap < 300 && timeSinceLastTap > 0 && e.touches.length === 0 && !isPinching && !isPanning) {
       e.preventDefault();
       if (scale === 1) {
-        // 더블탭 위치를 중심으로 줌인
         const touch = e.changedTouches[0];
         zoomToPoint(touch.clientX, touch.clientY, 2.5);
         updateTransform();
       } else {
         resetZoom();
       }
-      lastTap = 0; // 더블탭 처리 후 리셋
+      lastTap = 0;
       return;
     }
-    
+
     // 핀치 종료
     if (isPinching && e.touches.length < 2) {
       isPinching = false;
-      // 핀치 후 줌 상태 유지 (자동 리셋 제거)
-      lastTap = now;
+      justPinched = true;
+      if (justPinchTimer) clearTimeout(justPinchTimer);
+      justPinchTimer = setTimeout(()=>{ justPinched = false; justPinchTimer = null; }, 400);
+      lastTap = 0;
       return;
     }
-    
+
     // 팬 종료
     if (isPanning && e.touches.length === 0) {
       isPanning = false;
       lastTap = now;
       return;
     }
-    
-    // 스와이프 처리 (줌/팬 상태가 아니고 scale이 1일 때만)
+
+    // 스와이프 처리
     if (!isPinching && !isPanning && e.touches.length === 0 && scale === 1) {
       const touchDuration = Date.now() - lastTouchTime;
       if (touchDuration < 300) {
         touchEndX = e.changedTouches[0].clientX;
         const diff = touchStartX - touchEndX;
-        
         if (Math.abs(diff) > 50) {
           if (diff > 0) {
             idx = (idx + 1) % images.length;
@@ -205,16 +208,15 @@
             idx = (idx - 1 + images.length) % images.length;
           }
           render(idx);
-          lastTap = 0; // 스와이프 후 더블탭 카운터 리셋
+          lastTap = 0;
           return;
         }
       }
     }
-    
+
     lastTap = now;
   }, {passive: false});
 
-  // 키보드 화살표
   document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') {
       idx = (idx - 1 + images.length) % images.length;
