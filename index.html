@@ -19,15 +19,15 @@
 
 <header><div class="bar">
   <div id="title">Photos</div>
-  <div><a href="./" id="permalink">ÇöÀç »çÁø ¸µÅ©</a></div>
+  <div><a href="./" id="permalink">í˜„ì¬ ì‚¬ì§„ ë§í¬</a></div>
 </div></header>
 
 <main><div class="wrap">
   <div class="viewer"><img id="big" alt=""></div>
   <div class="bar">
     <div>
-      <button id="prev">ÀÌÀü</button>
-      <button id="next">´ÙÀ½</button>
+      <button id="prev">ì´ì „</button>
+      <button id="next">ë‹¤ìŒ</button>
     </div>
     <div id="count"></div>
   </div>
@@ -36,7 +36,7 @@
 
 <script>
 (async () => {
-  // Ç×»ó ÃÖ½ÅÀ» ¹Ş±â À§ÇØ version.txt¸¦ ¸ÕÀú ÀĞÀ½
+  // í•­ìƒ ìµœì‹ ì„ ë°›ê¸° ìœ„í•´ version.txtë¥¼ ë¨¼ì € ì½ìŒ
   const ver = await fetch('version.txt?ts=' + Date.now(), {cache:'no-store'})
                   .then(r=>r.text()).then(t=>t.trim()).catch(()=>Date.now());
 
@@ -69,7 +69,7 @@
     setPermalink(i);
   }
 
-  // ½æ³×ÀÏ »ı¼º
+  // ì¸ë„¤ì¼ ìƒì„±
   images.forEach((img, i) => {
     const t = document.createElement('img');
     t.loading = 'lazy';
@@ -82,7 +82,7 @@
   document.getElementById('prev').onclick = () => { idx = (idx - 1 + images.length) % images.length; render(idx); };
   document.getElementById('next').onclick = () => { idx = (idx + 1) % images.length; render(idx); };
 
-  // ÅÍÄ¡ ½º¿ÍÀÌÇÁ ±â´É
+  // í„°ì¹˜ ìŠ¤ì™€ì´í”„ ê¸°ëŠ¥
   const viewer = document.querySelector('.viewer');
   let touchStartX = 0;
   let touchEndX = 0;
@@ -97,23 +97,23 @@
   }, {passive: true});
   
   function handleSwipe() {
-    const swipeThreshold = 50; // ÃÖ¼Ò ½º¿ÍÀÌÇÁ °Å¸®
+    const swipeThreshold = 50; // ìµœì†Œ ìŠ¤ì™€ì´í”„ ê±°ë¦¬
     const diff = touchStartX - touchEndX;
     
     if (Math.abs(diff) > swipeThreshold) {
       if (diff > 0) {
-        // ¿ŞÂÊÀ¸·Î ½º¿ÍÀÌÇÁ ¡æ ´ÙÀ½ ÀÌ¹ÌÁö
+        // ì™¼ìª½ìœ¼ë¡œ ìŠ¤ì™€ì´í”„ â†’ ë‹¤ìŒ ì´ë¯¸ì§€
         idx = (idx + 1) % images.length;
         render(idx);
       } else {
-        // ¿À¸¥ÂÊÀ¸·Î ½º¿ÍÀÌÇÁ ¡æ ÀÌÀü ÀÌ¹ÌÁö
+        // ì˜¤ë¥¸ìª½ìœ¼ë¡œ ìŠ¤ì™€ì´í”„ â†’ ì´ì „ ì´ë¯¸ì§€
         idx = (idx - 1 + images.length) % images.length;
         render(idx);
       }
     }
   }
 
-  // Å°º¸µå È­»ìÇ¥ Áö¿ø
+  // í‚¤ë³´ë“œ í™”ì‚´í‘œ ì§€ì›
   document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') {
       idx = (idx - 1 + images.length) % images.length;
